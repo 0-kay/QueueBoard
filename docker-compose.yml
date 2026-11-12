@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    # Not published: only nginx talks to it, over the Compose network.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

@@ -1,0 +1,102 @@
+@use '@angular/material' as mat;
+@use './styles/theme-colors' as qb;
+
+// QueueBoard theme: Material M3, Liberty navy primary, light-blue tertiary,
+// default error role (#B3261E). Light, density 0.
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (
+      primary: qb.$primary-palette,
+      tertiary: qb.$tertiary-palette,
+      theme-type: light,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+
+  // Pin the exact brand values from the design spec.
+  @include mat.theme-overrides((
+    primary: #0a254e,
+    on-primary: #ffffff,
+    error: #b3261e,
+    surface: #ffffff,
+    on-surface: #1d1b20,
+    on-surface-variant: #49454f,
+    outline: #79747e,
+    outline-variant: #e0e0e0,
+    background: #fafafa,
+  ));
+
+  @include mat.card-overrides((
+    outlined-outline-color: #e0e0e0,
+    outlined-container-shape: 12px,
+    outlined-container-color: #ffffff,
+  ));
+
+  @include mat.table-overrides((
+    row-item-container-height: 52px,
+    header-container-height: 56px,
+    row-item-outline-color: #eeeeee,
+    header-headline-color: #49454f,
+    header-headline-size: 12px,
+    header-headline-weight: 500,
+    row-item-label-text-size: 14px,
+    background-color: #ffffff,
+  ));
+
+  @include mat.snack-bar-overrides((
+    container-color: #322f35,
+    supporting-text-color: #f5eff7,
+    button-color: #9bc7ee,
+    container-shape: 4px,
+  ));
+
+  @include mat.tooltip-overrides((
+    container-color: #322f35,
+    supporting-text-color: #f5eff7,
+  ));
+
+  @include mat.sidenav-overrides((
+    container-width: 480px,
+    container-shape: 0,
+    scrim-color: rgba(0, 0, 0, .32),
+  ));
+
+  @include mat.dialog-overrides((
+    container-shape: 28px,
+  ));
+
+  @include mat.paginator-overrides((
+    container-background-color: transparent,
+  ));
+}
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: #fafafa;
+  color: #1d1b20;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+a { color: #0a254e; }
+a:hover { color: #1c3f73; }
+
+.mono { font-family: 'Roboto Mono', monospace; }
+
+// Material Symbols are the default icon font set (configured in app.config).
+.material-symbols-outlined.filled { font-variation-settings: 'FILL' 1; }
+
+// Closed / inactive option suffix.
+.qb-muted-suffix { color: #625b71; font-size: 14px; margin-left: 6px; }
+
+// Shared skeleton block.
+.qb-skel { display: block; background: #eeeeee; border-radius: 4px; }
+
+// Selected option tint (light blue, never as text on white).
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) { background: #e3eef9; }
+.mat-mdc-menu-item:hover:not([disabled]) { background: #eaf3fc; }
+
+.qb-dialog-560 { width: 560px; max-width: calc(100vw - 32px); }
