@@ -28,6 +28,15 @@ describe('StatusBadge', () => {
     expect(badge.classList.contains('completed')).toBe(false);
   });
 
+  it('renders a status value the UI does not know (CANCELLED) as a grey Unknown badge with no status icon', async () => {
+    const el = await render('CANCELLED');
+    const badge = el.querySelector('.badge')!;
+    expect(el.querySelector('.label')?.textContent?.trim()).toBe('Unknown');
+    expect(badge.getAttribute('data-status')).toBe('unknown');
+    expect(badge.querySelector('.hollow')).not.toBeNull();
+    expect(el.querySelector('.icon')).toBeNull();
+  });
+
   it('always shows the error icon with the word for Failed', async () => {
     const el = await render('FAILED');
     expect(el.querySelector('.icon')?.textContent?.trim()).toBe('error');

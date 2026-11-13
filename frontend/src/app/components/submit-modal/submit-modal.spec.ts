@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { appError } from '../../api/app-error';
+import { appError, GENERIC_ERROR_MESSAGE } from '../../api/app-error';
 import { JobType, SubmitJobRequest } from '../../api/models';
 import { REFERENCE } from '../../testing/fixtures';
 import { SubmitModal } from './submit-modal';
@@ -81,23 +81,25 @@ describe('SubmitModal', () => {
     expect(submitBtn().disabled).toBe(false);
   });
 
-  it('shows 400 errors under the matching fields and the description at the top', async () => {
+  it('marks 400 fields and shows only generic text, never the server messages', async () => {
     form().controls.name.setValue('Midterm grades CSCI-099');
     await chooseType('GRADE_REPORT');
     form().controls.courseCode.setValue('PHYS-099');
     await fixture.whenStable();
 
-    fixture.componentRef.setInput('serverError', appError(400, 'Some fields need attention.', [
+    fixture.componentRef.setInput('serverError', appError(400, GENERIC_ERROR_MESSAGE, [
       { field: 'payload.courseCode', message: 'Course not found' },
       { field: 'name', message: 'Name is taken' },
       { field: 'somethingElse', message: 'Unmapped problem' },
     ]));
     await fixture.whenStable();
 
-    expect(field('form-error')?.textContent).toContain('Some fields need attention.');
-    expect(field('form-error')?.textContent).toContain('Unmapped problem');
-    expect(field('error-courseCode')?.textContent).toContain('Course not found');
-    expect(field('error-name')?.textContent).toContain('Name is taken');
+    expect(field('form-error')?.textContent).toContain(GENERIC_ERROR_MESSAGE);
+    expect(field('form-error')?.textContent).not.toContain('Unmapped problem');
+    expect(field('error-courseCode')?.textContent).toContain('Check this value.');
+    expect(field('error-name')?.textContent).toContain('Check this value.');
+    expect(fixture.nativeElement.textContent).not.toContain('Course not found');
+    expect(fixture.nativeElement.textContent).not.toContain('Name is taken');
     // A server error doesn't block resubmitting.
     expect(submitBtn().disabled).toBe(false);
   });

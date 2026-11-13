@@ -65,13 +65,13 @@ describe('JobsPage (detail panel actions)', () => {
     expect(root().querySelector('app-detail-panel [data-status=completed]')).toBeNull();
   });
 
-  it('on 409 shows the description and refetches the job', async () => {
+  it('on 409 shows a generic message and refetches the job', async () => {
     (root().querySelector('[data-testid=retry]') as HTMLButtonElement).click();
     http.expectOne({ method: 'POST', url: '/api/v1/jobs/job-1/retry' })
       .flush(fail(409, 'This job failed with a permanent error and can\'t be retried.'), { status: 409, statusText: 'Conflict' });
     await harness.fixture.whenStable();
 
-    expect(show).toHaveBeenCalledWith('This job failed with a permanent error and can\'t be retried.');
+    expect(show).toHaveBeenCalledWith('Something went wrong. Please try again.');
     const refetch = http.match(isGet);
     expect(refetch.length).toBe(1);
     refetch[0].flush(ok(job({ status: 'FAILED', retryable: false })));

@@ -44,14 +44,15 @@ describe('DashboardPage', () => {
     fixture.destroy();
   });
 
-  it('shows an inline error with the description when the first load fails', async () => {
+  it('shows an inline generic error, not the server text, when the first load fails', async () => {
     const fixture = TestBed.createComponent(DashboardPage);
     await fixture.whenStable();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/v1/jobs/stats').flush({ status: 503, message: 'x', description: 'QueueBoard is restarting.', data: null, errors: [] }, { status: 503, statusText: 'Service Unavailable' });
     // forkJoin cancels the sibling recent-jobs request when stats fails.
     await fixture.whenStable();
-    expect((fixture.nativeElement as HTMLElement).querySelector('[role=alert]')?.textContent).toContain('QueueBoard is restarting.');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role=alert]')?.textContent).toContain('Something went wrong. Please try again.');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('QueueBoard is restarting.');
     fixture.destroy();
   });
 });

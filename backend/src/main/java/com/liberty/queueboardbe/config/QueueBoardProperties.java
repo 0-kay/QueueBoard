@@ -3,16 +3,13 @@ package com.liberty.queueboardbe.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
-import java.util.List;
-
 /** All {@code queueboard.*} settings. Defaults match the requirements doc. */
 @ConfigurationProperties(prefix = "queueboard")
 public record QueueBoardProperties(
         @DefaultValue Worker worker,
         @DefaultValue Jobs jobs,
         @DefaultValue Demo demo,
-        @DefaultValue Simulation simulation,
-        @DefaultValue Cors cors) {
+        @DefaultValue Simulation simulation) {
 
     /**
      * @param enabled        run the poller; tests that drive handlers directly turn it off
@@ -34,9 +31,5 @@ public record QueueBoardProperties(
 
     /** @param delayScale multiplier for simulated work delays; 0 makes jobs instant (tests) */
     public record Simulation(@DefaultValue("1.0") double delayScale) {
-    }
-
-    /** @param allowedOrigins frontend dev servers allowed to call /api/** */
-    public record Cors(@DefaultValue({"http://localhost:5173", "http://localhost:3000"}) List<String> allowedOrigins) {
     }
 }

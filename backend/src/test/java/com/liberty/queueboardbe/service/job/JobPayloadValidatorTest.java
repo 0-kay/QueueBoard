@@ -49,8 +49,7 @@ class JobPayloadValidatorTest {
     private JobPayloadValidator validator(boolean demoEnabled) {
         QueueBoardProperties properties = new QueueBoardProperties(
                 new QueueBoardProperties.Worker(true, 5, 500), new QueueBoardProperties.Jobs(3),
-                new QueueBoardProperties.Demo(demoEnabled), new QueueBoardProperties.Simulation(0),
-                new QueueBoardProperties.Cors(List.of()));
+                new QueueBoardProperties.Demo(demoEnabled), new QueueBoardProperties.Simulation(0));
         return new JobPayloadValidator(processor, VALIDATOR, JSON, properties);
     }
 

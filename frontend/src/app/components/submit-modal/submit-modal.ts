@@ -12,7 +12,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { inject } from '@angular/core';
 import { AppError } from '../../api/app-error';
-import { FieldError, JOB_TYPES, JobType, ReferenceData, SubmitJobRequest } from '../../api/models';
+import { JOB_TYPES, JobType, ReferenceData, SubmitJobRequest } from '../../api/models';
 import { typeLabel } from '../../shared/format';
 
 export interface SubmitPrefill {
@@ -54,9 +54,6 @@ const REQUIRED_BY_TYPE: Record<JobType, FieldName[]> = {
             <mat-icon class="alert-icon">error</mat-icon>
             <div>
               <strong>Couldn’t submit this job.</strong> {{ err.description }}
-              @if (unmatched().length) {
-                <ul>@for (e of unmatched(); track $index) { <li>{{ e.field ? e.field + ': ' : '' }}{{ e.message }}</li> }</ul>
-              }
             </div>
           </div>
         }
@@ -180,7 +177,6 @@ export class SubmitModal {
 
   private readonly formTick = toSignal(this.form.events, { initialValue: null });
   protected readonly type = toSignal(this.form.controls.type.valueChanges, { initialValue: null as JobType | null });
-  protected readonly unmatched = signal<FieldError[]>([]);
   /** Payload keys without form fields (for example simulateFailure) are kept on duplicate. */
   private extraPayload: Record<string, unknown> = {};
 
@@ -262,18 +258,15 @@ export class SubmitModal {
     });
   }
 
+  /** Marks fields the server rejected. The server's own messages are logged by the interceptor, not shown. */
   private applyServerErrors(err: AppError | null): void {
-    const leftover: FieldError[] = [];
     for (const e of err?.errors ?? []) {
       const key = (e.field ?? '').replace(/^payload\./, '') as FieldName;
       const control = key ? this.form.get(key) : null;
       if (control && (key === 'name' || key === 'type' || this.shows(key))) {
-        control.setErrors({ ...(control.errors ?? {}), server: e.message });
+        control.setErrors({ ...(control.errors ?? {}), server: 'Check this value.' });
         control.markAsTouched();
-      } else {
-        leftover.push(e);
       }
     }
-    this.unmatched.set(leftover);
   }
 }

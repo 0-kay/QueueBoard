@@ -86,7 +86,8 @@ a:hover { color: #1c3f73; }
 
 .mono { font-family: 'Roboto Mono', monospace; }
 
-// Material Symbols are the default icon font set (configured in app.config).
+// Roboto, Roboto Mono and Material Symbols are bundled from npm (angular.json "styles"), so the
+// app makes no font requests to Google. Material Symbols is the default icon font set (app.config).
 .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1; }
 
 // Closed / inactive option suffix.

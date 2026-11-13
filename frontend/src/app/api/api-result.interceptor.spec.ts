@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { apiResultInterceptor } from './api-result.interceptor';
-import { AppError, isAppError, NETWORK_ERROR_DESCRIPTION } from './app-error';
+import { AppError, GENERIC_ERROR_MESSAGE, isAppError, NETWORK_ERROR_DESCRIPTION } from './app-error';
 import { fail, ok } from '../testing/fixtures';
 
 describe('apiResultInterceptor', () => {
@@ -11,6 +11,7 @@ describe('apiResultInterceptor', () => {
   let ctrl: HttpTestingController;
 
   beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     TestBed.configureTestingModule({
       providers: [provideHttpClient(withInterceptors([apiResultInterceptor])), provideHttpClientTesting()],
     });
@@ -18,7 +19,10 @@ describe('apiResultInterceptor', () => {
     ctrl = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => ctrl.verify());
+  afterEach(() => {
+    ctrl.verify();
+    vi.restoreAllMocks();
+  });
 
   async function error(promise: Promise<unknown>): Promise<AppError> {
     try {
@@ -42,7 +46,7 @@ describe('apiResultInterceptor', () => {
     expect(await result).toBeNull();
   });
 
-  it('turns an ApiResult error body into an AppError with description and field errors', async () => {
+  it('turns an ApiResult error body into a generic AppError, keeping field names and logging the real error', async () => {
     const result = firstValueFrom(http.post('/api/v1/jobs', {}));
     ctrl.expectOne('/api/v1/jobs').flush(
       fail(400, 'Some fields need attention.', [{ field: 'payload.courseCode', message: 'Course not found' }]),
@@ -50,7 +54,11 @@ describe('apiResultInterceptor', () => {
     );
     const err = await error(result);
     expect(err.status).toBe(400);
-    expect(err.description).toBe('Some fields need attention.');
+    expect(err.description).toBe(GENERIC_ERROR_MESSAGE);
+    expect(console.error).toHaveBeenCalledWith(
+      '[QueueBoard] POST /api/v1/jobs failed',
+      expect.objectContaining({ description: 'Some fields need attention.' }),
+    );
     expect(err.errors).toEqual([{ field: 'payload.courseCode', message: 'Course not found' }]);
   });
 
@@ -68,13 +76,14 @@ describe('apiResultInterceptor', () => {
     ctrl.expectOne('/api/v1/jobs').flush('<html>Bad gateway</html>', { status: 502, statusText: 'Bad Gateway' });
     const err = await error(result);
     expect(err.status).toBe(502);
-    expect(err.description).toContain('502');
+    expect(err.description).toBe(GENERIC_ERROR_MESSAGE);
+    expect(console.error).toHaveBeenCalledWith('[QueueBoard] GET /api/v1/jobs failed', '<html>Bad gateway</html>');
   });
 
   it('turns a non-ApiResult success body into an AppError instead of crashing', async () => {
     const result = firstValueFrom(http.get('/api/v1/jobs'));
     ctrl.expectOne('/api/v1/jobs').flush({ items: [] });
     const err = await error(result);
-    expect(err.description).toMatch(/doesn’t understand/);
+    expect(err.description).toBe(GENERIC_ERROR_MESSAGE);
   });
 });

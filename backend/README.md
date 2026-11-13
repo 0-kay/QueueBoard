@@ -7,10 +7,12 @@ enrollments, terms, accounts, notification templates).
 
 ## Prerequisites
 
-- JDK 21 (the Gradle toolchain targets 21)
-- Nothing else: the Gradle wrapper is committed and the database is in-memory H2
+- Java 21 (JDK). The Gradle toolchain targets 21.
+- No Gradle install needed: use the Gradle wrapper (`./gradlew`) in this folder, which downloads the
+  right Gradle version on first run.
+- Nothing else. The database is in-memory H2.
 
-## Run
+## How to run
 
 ```bash
 ./gradlew bootRun
@@ -33,7 +35,7 @@ numbers on first load).
 
 Open http://localhost:8080/h2-console with JDBC URL `jdbc:h2:mem:queueboard`, user `sa`, empty password.
 
-## Test
+## How to run tests
 
 ```bash
 ./gradlew test
@@ -101,6 +103,10 @@ A job is retryable when it is FAILED, its latest attempt's error is TEMPORARY, a
 `attempts < maxAttempts` (3 total: one run plus two retries). The server computes `retryable` on
 every job response. Retry keeps the job id.
 
+**Retries stop after 3 attempts.** Once a job has used all 3, it stays FAILED and `retryable` is
+false, even if its error was TEMPORARY. So a demo job that keeps failing ends up FAILED with no more
+retries, and `POST /jobs/{id}/retry` returns 409.
+
 ## Configuration
 
 | Property | Default | Purpose |
@@ -111,7 +117,9 @@ every job response. Retry keeps the job id.
 | `queueboard.jobs.max-attempts` | 3 | Total attempts per job |
 | `queueboard.demo.enabled` | true | Allows `simulateFailure` in payloads |
 | `queueboard.simulation.delay-scale` | 1.0 | Multiplier for simulated work time; 0 makes jobs instant |
-| `queueboard.cors.allowed-origins` | `http://localhost:5173,http://localhost:3000` | Frontend dev servers allowed to call `/api/**` |
+
+There is no CORS configuration. The frontend always reaches the API through its nginx proxy (or the
+Angular dev server proxy), so browser requests are same-origin.
 
 ## Logging
 
@@ -178,7 +186,7 @@ src/main/java/com/liberty/queueboardbe/
 │   └── reference/        ReferenceDataService (+ impl/)
 ├── repository/
 │   └── job/              Spring Data repositories for job and job_attempt, stats queries
-├── config/               Properties, worker pool, OpenAPI, CORS
+├── config/               Properties, worker pool, OpenAPI
 ├── exception/            GlobalExceptionHandler and custom exceptions
 └── simulation/           NOT the focus: SimulatedJobProcessor (dispatcher), one simulation per type,
                           LmsRepository, SimulatedReferenceData, NotificationSender, SimulatedWork
@@ -191,17 +199,25 @@ that needs a new case. Everything above `simulation/` is the assessment core.
 
 ## Known limitations
 
-See also [docs/descoped.md](docs/descoped.md) for what was cut, isolated, or deliberately not built.
+[docs/descoped.md](docs/descoped.md) has the full list of what I cut, isolated, or chose not to
+build. In short:
+
+- **Processing is simulated.** The job types run against a small simulated LMS in `simulation/`,
+  kept behind `JobProcessor` so it can be swapped for real integrations.
+- **Not built:** authentication, scheduled or recurring jobs, automatic retry with backoff, cancel,
+  a stuck-job reaper, push updates to the UI (the UI polls), and exactly-once notifications.
+- **H2 only.** Moving to Postgres means rewriting `DATEADD` in the seed migration and `DATEDIFF` in
+  the two stats queries; the rest of the SQL is portable.
+
+Behaviour to be aware of when running it:
 
 - **In-memory data resets on restart.** H2 runs in memory; every start re-runs the migrations and seed.
 - **Notifications are effectively once, not exactly once.** A crash between sending a message and
   saving its SENT flag would resend that one message on retry.
 - **No stuck-job reaper.** If a worker thread dies (or the process stops) mid-job, the job stays
   PROCESSING. Exceptions are always recorded; only a dead thread or JVM leaves a job behind.
-- **No authentication.** Every endpoint is open.
-- **Single instance tested only.** The atomic claim is safe across instances in principle, but only
-  one instance was tested, against an in-memory database.
+- **Single instance tested only.** The atomic claim is safe across instances in principle, but I only
+  tested one instance, against an in-memory database.
 - Grade or billing jobs touching the same rows at once serialize on row locks (`LOCK_TIMEOUT=10000`);
   a wait longer than that fails the job with a retryable `UNEXPECTED_ERROR`.
-- Out of scope by design: scheduled or recurring jobs, automatic retry, cancel, push updates
-  (SSE/WebSockets). Docker setup lives at the repo root (`docker-compose.yml`).
+- The Docker setup lives at the repo root (`docker-compose.yml`).

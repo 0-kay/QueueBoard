@@ -9,7 +9,9 @@ a grey "Unknown" badge, Retry always says "queued", and status always comes from
 
 ## Prerequisites
 
-- Node.js 22 (tested with 22.17) and npm 10+
+- Node.js `^20.19`, `^22.12` or `>=24` (the Angular 21 requirement). I test with Node 22.17, and the
+  Docker image uses Node 22.
+- npm 10 or later
 - The QueueBoard backend running on `http://localhost:8080`
 
 ## Run
@@ -25,17 +27,22 @@ Open http://localhost:4200. `npm start` runs `ng serve` on port 4200 with `proxy
 > that's a known npm 10.9 bug when building a fresh dependency tree. Use `npm ci` (it installs from
 > the lockfile) or `npx npm@11 install`.
 
+Fonts (Roboto, Roboto Mono) and icons (Material Symbols) are bundled from npm, so the app makes no
+requests to Google Fonts and works offline.
+
 ## Proxy setup
 
 `proxy.conf.json` forwards every `/api` request to `http://localhost:8080`, so the browser only
-ever talks to `localhost:4200` and no CORS setup is needed.
+ever talks to `localhost:4200`. To point at a different backend, change `target` in
+`proxy.conf.json`.
 
-The proxy also rewrites the `Origin` header to the backend's own origin. Without that, the
-browser's `Origin: http://localhost:4200` on POST/DELETE makes Spring treat the call as
-cross-origin, and the backend's CORS allowlist (5173/3000 by default) rejects it with
-`403 Invalid CORS request`.
+## Build
 
-To point at a different backend, change `target` (and the `Origin` value) in `proxy.conf.json`.
+```bash
+npm run build
+```
+
+Runs a production `ng build`. The output goes to `dist/QueueBoardFE/browser`.
 
 ## Docker
 
@@ -44,8 +51,8 @@ nginx on port 80. It's used by the root `docker-compose.yml` (published on `loca
 `nginx.conf`:
 
 - serves the built files, with `index.html` as the fallback for app routes like `/jobs/:id`
-- proxies `/api/` to `http://backend:8080` (the Compose service name) and drops the `Origin`
-  header, for the same CORS reason as the dev proxy
+- proxies `/api/` to `http://backend:8080` (the Compose service name)
+- proxies `/swagger-ui` and `/v3/api-docs` to the backend, so Swagger UI works on the same address
 - resolves `backend` per request through Docker's DNS, so nginx starts even if the backend isn't
   up yet and answers `/api` with 502 until it is (the UI shows its connection-lost state)
 
@@ -66,12 +73,12 @@ mode. HTTP is mocked with `HttpTestingController`. Covered:
 
 | Area | Spec |
 | --- | --- |
-| Status badge (each status, unknown → "Unknown") | `components/status-badge/status-badge.spec.ts` |
-| Interceptor (unwrap, ApiResult error, network failure, non-ApiResult bodies) | `api/api-result.interceptor.spec.ts` |
+| Status badge (each status, unknown values → "Unknown") | `components/status-badge/status-badge.spec.ts` |
+| Interceptor (unwrap, generic error text, real error logged, network failure, non-ApiResult bodies) | `api/api-result.interceptor.spec.ts` |
 | Polling (2 s active, 10 s idle, stale keeps data, refresh, hidden tab) | `services/job-polling.service.spec.ts` |
 | Retry visibility, Delete only for COMPLETED/FAILED, FAILED never completed | `components/detail-panel/detail-panel.spec.ts` |
-| Retry 202 → "Retry queued" + QUEUED, 409 → description + refetch, delete confirmation, URL filters | `pages/jobs/jobs-page.spec.ts` |
-| Submit modal (fields per type, 400 field errors, disabled while sending, duplicate prefill) | `components/submit-modal/submit-modal.spec.ts` |
+| Retry 202 → "Retry queued" + QUEUED, 409 → generic message + refetch, delete confirmation, URL filters | `pages/jobs/jobs-page.spec.ts` |
+| Submit modal (fields per type, 400 fields marked with generic text, disabled while sending, duplicate prefill) | `components/submit-modal/submit-modal.spec.ts` |
 | Dashboard cards and metrics from `Stats`, first-load error | `pages/dashboard/dashboard-page.spec.ts` |
 
 ## Structure
@@ -93,6 +100,9 @@ src/app/
   data, the in-flight flag and server errors, and sends the request.
 - Every response is `ApiResult<T>`. The interceptor unwraps `data` on success and turns any failure
   (ApiResult error, network error, unexpected body) into one `AppError { status, description, errors }`.
+- The UI never shows server or exception text. `description` is always "Something went wrong.
+  Please try again." (or a "can't reach the server" message for network failures), and fields the
+  server rejected show "Check this value." The real error goes to `console.error`.
 
 ## Behavior notes
 

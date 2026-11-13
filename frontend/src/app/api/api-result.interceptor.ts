@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { catchError, map, Observable, throwError } from 'rxjs';
 import { ApiResult } from './models';
 import { appError, AppError, NETWORK_ERROR_DESCRIPTION } from './app-error';
@@ -9,14 +9,19 @@ export function isApiResult(body: unknown): body is ApiResult<unknown> {
   return typeof b['status'] === 'number' && 'data' in b && typeof b['description'] === 'string';
 }
 
-function fromErrorResponse(err: HttpErrorResponse): AppError {
+/** Logs the real failure; the UI only ever gets the generic text. */
+function logError(req: HttpRequest<unknown>, detail: unknown): void {
+  console.error(`[QueueBoard] ${req.method} ${req.urlWithParams} failed`, detail);
+}
+
+function fromErrorResponse(req: HttpRequest<unknown>, err: HttpErrorResponse): AppError {
+  logError(req, err.error ?? err);
   if (err.status === 0) return appError(0, NETWORK_ERROR_DESCRIPTION);
   const body = err.error;
   if (isApiResult(body)) {
-    return appError(body.status || err.status, body.description, Array.isArray(body.errors) ? body.errors : []);
+    return appError(body.status || err.status, undefined, Array.isArray(body.errors) ? body.errors : []);
   }
-  const statusText = err.statusText && err.statusText !== 'OK' ? ` ${err.statusText}` : '';
-  return appError(err.status, `The server returned ${err.status}${statusText}. Please try again.`);
+  return appError(err.status);
 }
 
 /**
@@ -30,14 +35,16 @@ export const apiResultInterceptor: HttpInterceptorFn = (req, next): Observable<H
     map((event) => {
       if (!(event instanceof HttpResponse)) return event;
       if (!isApiResult(event.body)) {
-        throw appError(event.status, 'The server sent a response QueueBoard doesn’t understand.');
+        logError(req, { status: event.status, body: event.body, reason: 'Response is not an ApiResult' });
+        throw appError(event.status);
       }
       return event.clone({ body: event.body.data });
     }),
     catchError((err: unknown) => {
-      if (err instanceof HttpErrorResponse) return throwError(() => fromErrorResponse(err));
+      if (err instanceof HttpErrorResponse) return throwError(() => fromErrorResponse(req, err));
       if (err && typeof err === 'object' && (err as AppError).kind === 'AppError') return throwError(() => err);
-      return throwError(() => appError(0, 'Something went wrong. Please try again.'));
+      logError(req, err);
+      return throwError(() => appError(0));
     }),
   );
 };
